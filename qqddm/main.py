@@ -89,7 +89,7 @@ class BaseAnimeConverter(pydantic.BaseModel):
 class AnimeConverter(BaseAnimeConverter):
     """Synchronous AnimeConverter."""
 
-    def convert(
+    async def convert(
             self,
             picture: bytes
     ) -> "AnimeResult":
@@ -107,7 +107,7 @@ class AnimeConverter(BaseAnimeConverter):
         }
 
         time_start = time.time()
-        r = self._request(
+        r = await self._request(
             request_timeout_seconds=choose(self.global_request_timeout_seconds, self.generate_request_timeout_seconds),
             proxy=choose(self.global_proxy, self.generate_proxy),
             headers=headers,
@@ -158,13 +158,13 @@ class AnimeConverter(BaseAnimeConverter):
         # noinspection PyTypeChecker
         return pictures
 
-    def download_one(
+    async def download_one(
             self,
             download_url: str,
     ) -> bytes:
         """Request GET the given URL, downloading and returning the response bytes.
         """
-        r = self._request(
+        r = await self._request(
             request_timeout_seconds=choose(self.global_request_timeout_seconds, self.download_request_timeout_seconds),
             proxy=choose(self.global_proxy, self.download_proxy),
             headers=self._get_useragent_headers(choose(self.global_useragents, self.download_useragents)),
@@ -184,13 +184,13 @@ class AnimeConverter(BaseAnimeConverter):
         results_list[results_list_index] = r
 
     @staticmethod
-    def _request(
+    async def _request(
             request_timeout_seconds: float,
             proxy: Optional[str],
             **request_kwargs,
     ) -> httpx.Response:
-        with httpx.Client(proxies=proxy, timeout=request_timeout_seconds) as http:
-            return http.request(**request_kwargs)
+        async with httpx.AsyncClient(proxies=proxy, timeout=request_timeout_seconds) as client:
+            return await client.request(**request_kwargs)
 
 
 class AnimeResult(pydantic.BaseModel):

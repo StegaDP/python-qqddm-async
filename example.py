@@ -1,26 +1,32 @@
-import datetime
-import sys
-import os
-
+import asyncio
+import random
+from PIL import Image
+from numpy import asarray
 import httpx
 from qqddm import AnimeConverter, InvalidQQDDMApiResponseException, IllegalPictureQQDDMApiResponseException
 
+PROXYFORMAT = ['http://user:pass@ip:port']
+USERAGENT = "Mozilla/5.0 (X11; Linux x86_64; rv:106.0) Gecko/20100101 Firefox/106.0"
 
-PROXY = os.getenv("PROXY", None)
-USERAGENT = os.getenv("USERAGENT", "Mozilla/5.0 (X11; Linux x86_64; rv:106.0) Gecko/20100101 Firefox/106.0")
+
+def imagecrop(namefile: str):
+    image = Image.open(namefile).convert('RGB')
+    x = asarray(image)
+    lens1 = len(x)
+    lens = len(x[0])
+    if lens > lens1:
+        image = image.crop((0, 0, lens, lens1 - 177))
+    else:
+        image = image.crop((0, 0, lens, lens1 - 185))
+    image.save(namefile)
+    return f'{namefile}'
 
 
-if __name__ == '__main__':
-    # Start by reading the content of a picture.
-    # Run this script like this:
-    #    python example.py /path/to/a/picture.jpg
-
-    picture_filename = sys.argv[-1]
+async def get_pic_using_api(picture_filename, PROXY):
+    PROXY = random.choice(PROXY)
     if picture_filename.startswith("http"):
-        r = httpx.get(
-            url=picture_filename,
-            headers={"User-Agent": USERAGENT}
-        )
+        async with httpx.AsyncClient(headers={"User-Agent": USERAGENT}) as client:
+            r = await client.get(url=picture_filename)
         r.raise_for_status()
         picture_bytes = r.content
     else:
@@ -35,27 +41,26 @@ if __name__ == '__main__':
 
     # Result is returned as an `AnimeResult` object
     try:
-        result = converter.convert(picture_bytes)
+        result = await converter.convert(picture_bytes)
     except IllegalPictureQQDDMApiResponseException:
         # The API may forbid converting images with sensible content
         print("The image provided is forbidden, try with another picture")
-        exit(1)
+        return 0
     except InvalidQQDDMApiResponseException as ex:
         # If the API returned any other error, show the response body
         print(f"API returned error ({ex}); response body: {ex.response_body}")
-        exit(1)
+        return 1
+    except Exception as _EX:
+        print(f'API returned {_EX} exception. check it up!')
+        return 2
 
-    # noinspection PyUnboundLocalVariable
-    print("Result:", result)
-    print("Result URLs:", [str(url) for url in result.pictures_urls])
 
-    # This method downloads all the pictures from the given `AnimeResult` object, simultaneously.
-    # Returns a list of bytes, where each item is the picture data from each one of `result.pictures_urls`.
-    pictures = converter.download(result)
+    pic = await converter.download_one(result.pictures_urls[0])
+    with open(picture_filename, 'wb') as file:
+        file.write(pic)
+    naming = imagecrop(picture_filename)
+    return naming
 
-    # Finally, save each returned picture.
-    now_isoformat = datetime.datetime.now().isoformat()
-    for i, pic in enumerate(pictures):
-        filepath = f"qqddm_{now_isoformat}_{i}.jpg"
-        with open(filepath, "wb") as f:
-            f.write(pic)
+
+if __name__ == '__main__':
+    asyncio.run(get_pic_using_api('1.jpg', ["http://"]))
