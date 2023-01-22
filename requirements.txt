@@ -1,2 +1,4 @@
 httpx~=0.23.1
 pydantic~=1.10.2
+Pillow-SIMD==9.0.0post1
+numpy
