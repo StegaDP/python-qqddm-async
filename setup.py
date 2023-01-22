@@ -18,7 +18,7 @@ setup(
     url="https://github.com/David-Lor/python-qqddm",
     download_url="https://github.com/David-Lor/python-qqddm/archive/main.zip",
     keywords=["qq", "different dimension me", "anime", "ai"],
-    install_requires=json.loads(REQUIREMENTS_JSON),
+    install_requires=open('requirements.txt', 'rt'),
     classifiers=[
         "Development Status :: 4 - Beta",
         "Intended Audience :: Developers",
@@ -33,7 +33,7 @@ setup(
     license_files=["LICENSE.md"],
     long_description_content_type="text/markdown",
 
-    version=VERSION,
+    version='1.0async',
     long_description=readme_content,
     packages=find_packages(),
 )
